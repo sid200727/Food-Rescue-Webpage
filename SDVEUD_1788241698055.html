@@ -1,0 +1,258 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Food Rescue</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:wght@600;800&family=Instrument+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+/* Layout: single column app, sticky tab bar, summary strip, then cards sorted by time left */
+:root{
+  --bg:#f3f6f4; --surface:#ffffff; --ink:#14231c; --muted:#5b6b62; --line:#d8e2dc;
+  --brand:#0f6b4f; --brand-ink:#ffffff; --urgent:#c2410c; --soon:#a16207; --ok:#0f6b4f; --veg:#2f855a; --nonveg:#b91c1c;
+  --font-display:"Bricolage Grotesque","Trebuchet MS",sans-serif; --font-body:"Instrument Sans","Segoe UI",system-ui,sans-serif;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#0e1713; --surface:#16231d; --ink:#e7f0eb; --muted:#9db0a6; --line:#26382f;
+    --brand:#3fbf95; --brand-ink:#06251a; --urgent:#fb923c; --soon:#facc15; --ok:#3fbf95; --veg:#4ade80; --nonveg:#f87171; color-scheme:dark;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#0e1713; --surface:#16231d; --ink:#e7f0eb; --muted:#9db0a6; --line:#26382f;
+  --brand:#3fbf95; --brand-ink:#06251a; --urgent:#fb923c; --soon:#facc15; --ok:#3fbf95; --veg:#4ade80; --nonveg:#f87171; color-scheme:dark;
+}
+*{box-sizing:border-box}
+html,body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--font-body);font-size:16px;line-height:1.45}
+.wrap{max-width:720px;margin:0 auto;padding:20px 16px 56px}
+header h1{font-family:var(--font-display);font-weight:800;font-size:2rem;margin:0;letter-spacing:-.02em;text-wrap:balance}
+header p{margin:6px 0 0;color:var(--muted);max-width:60ch}
+.stats{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin:18px 0}
+.stat{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:12px}
+.stat b{display:block;font-family:var(--font-display);font-size:1.7rem;font-variant-numeric:tabular-nums;line-height:1.1}
+.stat span{font-size:.8rem;color:var(--muted)}
+.tabs{display:flex;gap:6px;background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:5px;margin-bottom:16px}
+.tabs button{flex:1;border:0;background:transparent;color:var(--muted);font:600 .95rem var(--font-body);padding:10px;border-radius:8px;cursor:pointer}
+.tabs button[aria-selected="true"]{background:var(--brand);color:var(--brand-ink)}
+button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-visible{outline:3px solid var(--brand);outline-offset:2px}
+.filters{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px}
+.chip{border:1px solid var(--line);background:var(--surface);color:var(--ink);font:500 .85rem var(--font-body);padding:6px 12px;border-radius:999px;cursor:pointer}
+.chip[aria-pressed="true"]{background:var(--ink);color:var(--bg);border-color:var(--ink)}
+.list{display:grid;gap:12px}
+.card{background:var(--surface);border:1px solid var(--line);border-left:6px solid var(--ok);border-radius:12px;padding:14px 14px 14px 16px;display:grid;gap:8px}
+.card.urgent{border-left-color:var(--urgent)} .card.soon{border-left-color:var(--soon)}
+.card.done{opacity:.7;border-left-color:var(--line)}
+.row{display:flex;justify-content:space-between;gap:12px;align-items:flex-start}
+.card h3{margin:0;font-size:1.05rem;font-weight:600}
+.meta{display:flex;flex-wrap:wrap;gap:6px 14px;color:var(--muted);font-size:.88rem}
+.timer{font-variant-numeric:tabular-nums;font-weight:600;white-space:nowrap;color:var(--ok)}
+.urgent .timer{color:var(--urgent)} .soon .timer{color:var(--soon)}
+.tag{font-size:.75rem;font-weight:600;padding:2px 8px;border-radius:999px;border:1px solid currentColor}
+.tag.veg{color:var(--veg)} .tag.nonveg{color:var(--nonveg)}
+.btn{border:0;background:var(--brand);color:var(--brand-ink);font:600 .95rem var(--font-body);padding:10px 16px;border-radius:10px;cursor:pointer}
+.btn.ghost{background:transparent;color:var(--ink);border:1px solid var(--line)}
+.claim-box{display:flex;gap:8px;flex-wrap:wrap}
+.claim-box input{flex:1;min-width:160px}
+.contact{background:var(--bg);border-radius:8px;padding:8px 10px;font-size:.9rem}
+form{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:16px;display:grid;gap:14px}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+label{display:grid;gap:5px;font-weight:600;font-size:.88rem}
+input,select,textarea{font:400 1rem var(--font-body);color:var(--ink);background:var(--bg);border:1px solid var(--line);border-radius:8px;padding:10px;width:100%}
+.hint{font-weight:400;color:var(--muted);font-size:.8rem}
+.note{font-size:.85rem;color:var(--muted);border-left:3px solid var(--line);padding-left:10px}
+.empty{text-align:center;color:var(--muted);padding:32px 12px;background:var(--surface);border:1px dashed var(--line);border-radius:12px}
+.toast{position:fixed;left:50%;bottom:20px;transform:translateX(-50%);background:var(--ink);color:var(--bg);padding:10px 16px;border-radius:10px;font-weight:600;opacity:0;pointer-events:none;transition:opacity .2s}
+.toast.show{opacity:1}
+.err{color:var(--urgent);font-size:.85rem;min-height:1.2em}
+@media (max-width:480px){.grid2{grid-template-columns:1fr}.stat b{font-size:1.4rem}}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>Food Rescue</h1>
+    <p>Kitchens, messes and caterers post surplus food in seconds. Nearby NGOs claim it before it spoils.</p>
+  </header>
+
+  <section class="stats" aria-label="Live totals">
+    <div class="stat"><b id="sOpen">0</b><span>listings open</span></div>
+    <div class="stat"><b id="sServ">0</b><span>servings available</span></div>
+    <div class="stat"><b id="sSaved">0</b><span>servings rescued</span></div>
+  </section>
+
+  <div class="tabs" role="tablist">
+    <button role="tab" id="tabFind" aria-selected="true">Find food (NGOs)</button>
+    <button role="tab" id="tabGive" aria-selected="false">Donate food</button>
+  </div>
+
+  <main id="viewFind">
+    <div class="filters" id="filters">
+      <button class="chip" data-f="all" aria-pressed="true">All</button>
+      <button class="chip" data-f="veg" aria-pressed="false">Veg only</button>
+      <button class="chip" data-f="big" aria-pressed="false">50+ servings</button>
+      <button class="chip" data-f="claimed" aria-pressed="false">Claimed</button>
+    </div>
+    <div class="list" id="list"></div>
+  </main>
+
+  <main id="viewGive" hidden>
+    <form id="form" novalidate>
+      <label for="fTitle">What are you donating?
+        <input id="fTitle" placeholder="e.g. Veg biryani and raita" maxlength="80">
+      </label>
+      <div class="grid2">
+        <label for="fServ">Servings
+          <input id="fServ" type="number" min="1" max="1000" inputmode="numeric" placeholder="40">
+        </label>
+        <label for="fHours">Safe to eat for
+          <select id="fHours">
+            <option value="1">1 hour</option><option value="2" selected>2 hours</option>
+            <option value="3">3 hours</option><option value="4">4 hours</option><option value="6">6 hours</option>
+          </select>
+        </label>
+      </div>
+      <div class="grid2">
+        <label for="fType">Food type
+          <select id="fType"><option value="veg">Vegetarian</option><option value="nonveg">Non-vegetarian</option></select>
+        </label>
+        <label for="fArea">Pickup area
+          <input id="fArea" placeholder="e.g. Koramangala, Bengaluru" maxlength="60">
+        </label>
+      </div>
+      <div class="grid2">
+        <label for="fName">Your name or kitchen
+          <input id="fName" placeholder="Hostel Mess B" maxlength="50">
+        </label>
+        <label for="fPhone">Phone for pickup
+          <input id="fPhone" type="tel" inputmode="tel" placeholder="98xxxxxx12" maxlength="15">
+        </label>
+      </div>
+      <p class="note">Only donate freshly cooked food that has been kept covered and hot, or unopened packaged food. The timer on each listing starts when you post.</p>
+      <div class="err" id="err" role="alert"></div>
+      <button class="btn" type="submit">Post listing</button>
+    </form>
+  </main>
+</div>
+<div class="toast" id="toast" role="status"></div>
+
+<script>
+(function(){
+  var KEY="food_rescue_v1", MIN=60000, filter="all", claimingId=null, listings=[];
+
+  function load(){
+    try{var raw=localStorage.getItem(KEY); if(raw){return JSON.parse(raw);}}catch(e){}
+    return null;
+  }
+  function save(){ try{localStorage.setItem(KEY,JSON.stringify(listings));}catch(e){} }
+  function seed(){
+    var n=Date.now();
+    return [
+      {id:1,title:"Veg biryani and raita",servings:60,type:"veg",area:"Koramangala, Bengaluru",donor:"Hostel Mess B",phone:"9800000012",posted:n-20*MIN,expires:n+85*MIN,status:"open"},
+      {id:2,title:"Chapati and dal tadka",servings:35,type:"veg",area:"Indiranagar, Bengaluru",donor:"Spice Route Caterers",phone:"9800000034",posted:n-50*MIN,expires:n+40*MIN,status:"open"},
+      {id:3,title:"Chicken fried rice",servings:25,type:"nonveg",area:"HSR Layout, Bengaluru",donor:"Wedding hall kitchen",phone:"9800000056",posted:n-10*MIN,expires:n+170*MIN,status:"open"},
+      {id:4,title:"Packaged bread and fruit boxes",servings:80,type:"veg",area:"Whitefield, Bengaluru",donor:"Corporate cafeteria",phone:"9800000078",posted:n-180*MIN,expires:n+300*MIN,status:"claimed",claimedBy:"Akshaya Seva Trust"}
+    ];
+  }
+  listings=load()||seed(); save();
+
+  function esc(s){return String(s).replace(/[&<>"']/g,function(c){return{"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c];});}
+  function left(l){return l.expires-Date.now();}
+  function fmt(ms){
+    if(ms<=0) return "Expired";
+    var m=Math.floor(ms/MIN), h=Math.floor(m/60);
+    return h>0 ? h+"h "+(m%60)+"m left" : m+" min left";
+  }
+  function cls(l){
+    if(l.status==="claimed") return "done";
+    var m=left(l)/MIN; return m<45?"urgent":(m<90?"soon":"");
+  }
+  function toast(t){var e=document.getElementById("toast");e.textContent=t;e.className="toast show";setTimeout(function(){e.className="toast";},2200);}
+
+  function stats(){
+    var open=listings.filter(function(l){return l.status==="open"&&left(l)>0;});
+    document.getElementById("sOpen").textContent=open.length;
+    document.getElementById("sServ").textContent=open.reduce(function(a,l){return a+l.servings;},0);
+    document.getElementById("sSaved").textContent=listings.filter(function(l){return l.status==="claimed";}).reduce(function(a,l){return a+l.servings;},0);
+  }
+
+  function render(){
+    stats();
+    var items=listings.filter(function(l){
+      if(filter==="claimed") return l.status==="claimed";
+      if(l.status!=="open"||left(l)<=0) return false;
+      if(filter==="veg") return l.type==="veg";
+      if(filter==="big") return l.servings>=50;
+      return true;
+    }).sort(function(a,b){return a.expires-b.expires;});
+    var el=document.getElementById("list");
+    if(!items.length){el.innerHTML='<div class="empty">Nothing here right now. New listings show up as soon as a kitchen posts them.</div>';return;}
+    el.innerHTML=items.map(function(l){
+      var claimed=l.status==="claimed";
+      var action;
+      if(claimed){
+        action='<div class="contact">Claimed by <b>'+esc(l.claimedBy)+'</b>. Pickup contact: '+esc(l.donor)+', '+esc(l.phone)+'</div>';
+      } else if(claimingId===l.id){
+        action='<div class="claim-box"><input id="ngoName" placeholder="Your NGO name" maxlength="50" aria-label="Your NGO name"><button class="btn" data-confirm="'+l.id+'">Confirm claim</button><button class="btn ghost" data-cancel="1">Cancel</button></div><div class="err" id="claimErr" role="alert"></div>';
+      } else {
+        action='<div><button class="btn" data-claim="'+l.id+'">Claim this food</button></div>';
+      }
+      return '<article class="card '+cls(l)+'">'+
+        '<div class="row"><h3>'+esc(l.title)+'</h3><span class="timer">'+(claimed?"Done":fmt(left(l)))+'</span></div>'+
+        '<div class="meta"><span><b>'+l.servings+'</b> servings</span><span class="tag '+l.type+'">'+(l.type==="veg"?"VEG":"NON-VEG")+'</span><span>'+esc(l.area)+'</span><span>from '+esc(l.donor)+'</span></div>'+
+        action+'</article>';
+    }).join("");
+    var inp=document.getElementById("ngoName"); if(inp) inp.focus();
+  }
+
+  document.getElementById("list").addEventListener("click",function(e){
+    var t=e.target;
+    if(t.dataset.claim){claimingId=Number(t.dataset.claim);render();}
+    else if(t.dataset.cancel){claimingId=null;render();}
+    else if(t.dataset.confirm){
+      var name=document.getElementById("ngoName").value.trim();
+      if(!name){document.getElementById("claimErr").textContent="Enter your NGO name to claim.";return;}
+      var id=Number(t.dataset.confirm);
+      listings.forEach(function(l){ if(l.id===id&&l.status==="open"){l.status="claimed";l.claimedBy=name;} });
+      claimingId=null; save(); render(); toast("Claimed. Call the donor to arrange pickup.");
+    }
+  });
+
+  document.getElementById("filters").addEventListener("click",function(e){
+    var f=e.target.dataset.f; if(!f) return;
+    filter=f; claimingId=null;
+    Array.prototype.forEach.call(document.querySelectorAll(".chip"),function(c){c.setAttribute("aria-pressed",String(c.dataset.f===f));});
+    render();
+  });
+
+  function tab(give){
+    document.getElementById("viewFind").hidden=give;
+    document.getElementById("viewGive").hidden=!give;
+    document.getElementById("tabFind").setAttribute("aria-selected",String(!give));
+    document.getElementById("tabGive").setAttribute("aria-selected",String(give));
+  }
+  document.getElementById("tabFind").onclick=function(){tab(false);};
+  document.getElementById("tabGive").onclick=function(){tab(true);};
+
+  document.getElementById("form").addEventListener("submit",function(e){
+    e.preventDefault();
+    var v=function(id){return document.getElementById(id).value.trim();};
+    var serv=parseInt(v("fServ"),10), err=document.getElementById("err");
+    if(!v("fTitle")||!v("fArea")||!v("fName")){err.textContent="Fill in what you are donating, the pickup area and your name.";return;}
+    if(!(serv>0)){err.textContent="Enter the number of servings as a whole number.";return;}
+    if(!/^[0-9+\s-]{7,15}$/.test(v("fPhone"))){err.textContent="Enter a phone number with 7 to 15 digits.";return;}
+    err.textContent="";
+    var now=Date.now();
+    listings.push({id:now,title:v("fTitle"),servings:serv,type:v("fType"),area:v("fArea"),donor:v("fName"),phone:v("fPhone"),posted:now,expires:now+Number(v("fHours"))*60*MIN,status:"open"});
+    save(); document.getElementById("form").reset(); filter="all";
+    Array.prototype.forEach.call(document.querySelectorAll(".chip"),function(c){c.setAttribute("aria-pressed",String(c.dataset.f==="all"));});
+    render(); tab(false); toast("Listing posted. NGOs can claim it now.");
+  });
+
+  render();
+  setInterval(function(){ if(claimingId===null) render(); },30000);
+})();
+</script>
+</body>
+</html>
